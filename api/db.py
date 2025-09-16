@@ -1,10 +1,10 @@
-import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
+import mysql.connector
 
-load_dotenv()
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",        # ganti sesuai setting MySQL
+        password="",        # isi kalau ada password
+        database="intern_telkomsel"
+    )
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)

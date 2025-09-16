@@ -26,7 +26,4 @@ tqdm==4.66.2
 requests==2.31.0
 h5py==3.11.0
 python-dotenv==1.0.1
-supabase==2.4.1
-
-# --- For compatibility with some TF/Keras ops ---
-h5py==3.11.0
+mysql-connector-python
