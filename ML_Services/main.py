@@ -1,9 +1,19 @@
 from fastapi import FastAPI
-from schemas import PredictionRequest
-from models_config import MODELS_KEBALEN, MODELS_GAYUNGAN
-from services.prediction import get_sensor_data, average_by_interval, make_prediction, save_predictions
+from fastapi.middleware.cors import CORSMiddleware
+from ML_Services.schemas import PredictionRequest
+from ML_Services.models_config import MODELS_KEBALEN, MODELS_GAYUNGAN
+from ML_Services.services.prediction import  make_prediction, save_predictions
+from ML_Services.services.preprocessing import get_sensor_data, average_by_interval
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
@@ -37,7 +47,6 @@ def predict_gayungan(request: PredictionRequest):
     save_predictions("gayungan", result["room"], result["predictions"])
 
     return {
-        "averaged_input": averaged_data,
         "prediction_result": result
     }
 

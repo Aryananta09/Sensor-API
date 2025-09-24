@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Telkomsel IoT - Dashboard</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="logo"><img src="assets/telkomsel-logo.png" alt="Telkomsel Logo" /></div>
+      <nav>
+        <ul>
+          <li class="active" data-target="dashboardSection">📊 Dashboard</li>
+          <li data-target="futureSection">🔮 Future Prediction</li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <!-- Dashboard Section -->
+      <section id="dashboardSection" class="section active">
+        <header class="topbar">
+          <h1>Dashboard</h1>
+          <div class="controls">
+            <label>
+              Server
+              <select id="serverSelect">
+                <option value="" selected disabled>Pilih Server</option>
+                <option value="kebalen">Kebalen</option>
+                <option value="gayungan">Gayungan</option>
+              </select>
+            </label>
+
+            <label>
+              Room
+              <select id="roomSelect">
+                <option value="" selected disabled>Pilih Room</option>
+              </select>
+            </label>
+
+            <label>
+              Sensor
+              <select id="sensorSelect">
+                <option value="" selected disabled>Pilih Sensor</option>
+              </select>
+            </label>
+          </div>
+        </header>
+
+        <section class="realtime">
+          <div class="card">
+            <div class="card-title">● Temperature Now</div>
+            <div class="card-value" id="tempNow">-- °C</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">● Humidity Now</div>
+            <div class="card-value" id="humNow">-- %</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">● Class</div>
+            <div class="card-value" id="classNow">--</div>
+          </div>
+        </section>
+
+        <section class="history">
+          <h2>History</h2>
+
+          <div class="chart-row">
+            <div class="chart-card">
+              <h3>Temperature</h3>
+              <canvas id="tempChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+              <h3>Humidity</h3>
+              <canvas id="humChart"></canvas>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- Future Prediction Section -->
+      <section id="futureSection" class="section">
+        <header class="topbar">
+          <h1>Future Prediction</h1>
+          <div class="controls">
+            <label>
+              Server
+              <select id="fpServerSelect">
+                <option value="" selected disabled>Pilih Server</option>
+                <option value="kebalen">Kebalen</option>
+                <option value="gayungan">Gayungan</option>
+              </select>
+            </label>
+
+            <label>
+              Room
+              <select id="fpRoomSelect">
+                <option value="" selected disabled>Pilih Room</option>
+              </select>
+            </label>
+
+            <label>
+              Duration
+              <select id="fpDurationSelect">
+                <option value="" selected disabled>Pilih Durasi</option>
+                <option value="1">1 Jam</option>
+                <option value="2">2 Jam</option>
+                <option value="3">3 Jam</option>
+              </select>
+            </label>
+
+            <button id="fpPredictBtn">Predict</button>
+          </div>
+        </header>
+
+        <section id="fpResult" class="fp-result hidden">
+          <h2>Prediction Result</h2>
+          <div class="chart-row">
+            <div class="chart-card">
+              <h3>Predicted Temperature</h3>
+              <canvas id="fpTempChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+              <h3>Predicted Humidity</h3>
+              <canvas id="fpHumChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Tambahan tabel hasil prediksi -->
+          <div class="table-card">
+            <h3>Prediction Table</h3>
+            <table id="fpTable">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Timestamp</th>
+                  <th>Temperature (°C)</th>
+                  <th>Humidity (%)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
