@@ -50,12 +50,20 @@ function updateSensors() {
   const room = roomSelect.value;
   sensorSelect.innerHTML = `<option value="" selected disabled>Pilih Sensor</option>`;
   if (!loc || !room) return;
+
+  const allOpt = document.createElement("option");
+  allOpt.value = "ALL";
+  allOpt.textContent = "All Sensor";
+  sensorSelect.appendChild(allOpt);
+
   ROOM_MAP[loc][room].forEach(s => {
     const o = document.createElement("option");
     o.value = s;
     o.textContent = s;
     sensorSelect.appendChild(o);
   });
+
+  sensorSelect.value = "ALL";
 }
 
 const tempCtx = document.getElementById("tempChart").getContext("2d");
@@ -109,8 +117,19 @@ async function fetchDashboard() {
     console.error("fetchDashboard error", err);
   }
 }
-serverSelect.addEventListener("change", () => { populateRoomsAndSensors(); fetchDashboard(); });
-roomSelect.addEventListener("change", () => { updateSensors(); fetchDashboard(); });
+serverSelect.addEventListener("change", () => {
+  populateRoomsAndSensors();
+  tempNowEl.textContent = "-- °C";
+  humNowEl.textContent = "-- %";
+  classNowEl.textContent = "--";
+});
+roomSelect.addEventListener("change", () => {
+  updateSensors();
+  
+  setTimeout(() => {
+    fetchDashboard();
+  }, 100); 
+});
 sensorSelect.addEventListener("change", fetchDashboard);
 setInterval(fetchDashboard, 10000);
 

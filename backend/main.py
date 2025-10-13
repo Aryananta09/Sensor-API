@@ -2,6 +2,10 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from backend.db import get_connection
 from datetime import datetime
+import traceback
+import logging
+
+logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI()
 
@@ -40,51 +44,80 @@ def root():
 def get_dashboard_data(
     location: str = Query(..., description="kebalen or gayungan"),
     room: str = Query(..., description="room id e.g. ROOM1"),
-    sensor: str = Query(..., description="sensor id e.g. DHT1"),
+    sensor: str = Query(..., description="sensor id e.g. DHT1 or ALL"),
     points: int = Query(12, description="max number of history points (default 12)")
 ):
-    # pastikan location valid
-    if location not in TABLE_MAP:
+    # validation
+    if location not in ROOM_MAP or location not in TABLE_MAP:
         raise HTTPException(status_code=400, detail="Invalid location")
 
-    table = TABLE_MAP[location]  # <-- ambil nama tabel sesuai mapping
-
-    # validasi room
     if room not in ROOM_MAP[location]:
         raise HTTPException(status_code=400, detail="Invalid room for this location")
 
-    # validasi sensor
-    if sensor not in ROOM_MAP[location][room]:
+    sensors_in_room = ROOM_MAP[location][room]
+    if not sensors_in_room:
+        raise HTTPException(status_code=400, detail="No sensors configured for this room")
+
+    if sensor != "ALL" and sensor not in sensors_in_room:
         raise HTTPException(status_code=400, detail="Invalid sensor for this room")
 
     conn = get_connection()
     if conn is None:
         raise HTTPException(status_code=500, detail="DB connection failed")
 
+    cursor = None
     try:
         cursor = conn.cursor(dictionary=True)
 
-        query = f"""
-            SELECT time_id, temperature, humidity
-            FROM `{table}`
-            WHERE sensor_id = %s
-            ORDER BY time_id DESC
-            LIMIT %s
-        """
-        cursor.execute(query, (sensor, points))
-        rows = cursor.fetchall()
-        cursor.close()
-        conn.close()
+        # use mapped table name
+        table_name = TABLE_MAP[location]
+
+        if sensor == "ALL":
+            placeholders = ",".join(["%s"] * len(sensors_in_room))
+            query = f"""
+                SELECT time_id,
+                       AVG(temperature) AS temperature,
+                       AVG(humidity)    AS humidity
+                FROM `{table_name}`
+                WHERE sensor_id IN ({placeholders})
+                GROUP BY time_id
+                ORDER BY time_id DESC
+                LIMIT %s
+            """
+            params = tuple(sensors_in_room) + (points,)
+            cursor.execute(query, params)
+        else:
+            query = f"""
+                SELECT time_id, temperature, humidity
+                FROM `{table_name}`
+                WHERE sensor_id = %s
+                ORDER BY time_id DESC
+                LIMIT %s
+            """
+            cursor.execute(query, (sensor, points))
+
+        rows = cursor.fetchall() or []
+        rows = list(reversed(rows))
 
         if not rows:
             return {"latest": None, "history": []}
 
-        # reverse ASC
-        rows = list(reversed(rows))
-        latest_row = rows[-1]
+        history = []
+        for r in rows:
+            ts = r.get("time_id")
+            try:
+                iso = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+            except Exception:
+                iso = str(ts)
+            history.append({
+                "timestamp": iso,
+                "temperature": float(r.get("temperature") or 0.0),
+                "humidity": float(r.get("humidity") or 0.0)
+            })
+
+        latest_row = history[-1]
         temp = latest_row["temperature"]
 
-        # klasifikasi
         if temp <= 10:
             temp_class = "Anomali"
         elif 11 <= temp <= 25:
@@ -96,29 +129,24 @@ def get_dashboard_data(
         else:
             temp_class = "Critical"
 
-        history = [
-            {
-                "timestamp": (r["time_id"].isoformat() if isinstance(r["time_id"], datetime) else str(r["time_id"])),
-                "temperature": r["temperature"],
-                "humidity": r["humidity"]
-            }
-            for r in rows
-        ]
-
         return {
             "latest": {
                 "temperature": latest_row["temperature"],
                 "humidity": latest_row["humidity"],
                 "class": temp_class,
-                "timestamp": history[-1]["timestamp"]
+                "timestamp": latest_row["timestamp"]
             },
             "history": history
         }
 
     except Exception as e:
+        tb = traceback.format_exc()
+        logger.error("Error in /dashboard-data: %s\n%s", str(e), tb)
+        raise HTTPException(status_code=500, detail="Internal server error. Check server logs for details.")
+    finally:
         try:
-            cursor.close()
+            if cursor:
+                cursor.close()
             conn.close()
-        except:
+        except Exception:
             pass
-        raise HTTPException(status_code=500, detail=str(e))
