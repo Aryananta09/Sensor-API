@@ -25,30 +25,30 @@ ROOM_MAP = {
 
 
 def make_prediction(seq_data, models_dict, lokasi: str, room: int, duration: int):
-    # Ambil model & scaler
     temp_model, temp_scaler = models_dict["temperature"][room]
     hum_model, hum_scaler = models_dict["humidity"][room]
 
-    # Ambil data input
-    X_temp = [d["temperature"] for d in seq_data]
-    X_hum = [d["humidity"] for d in seq_data]
+    X_temp = np.array([d["temperature"] for d in seq_data], dtype=np.float32)
+    X_hum = np.array([d["humidity"] for d in seq_data], dtype=np.float32)
 
-    # Tentukan start time
     now = datetime.now()
     minute_offset = (5 - (now.minute % 5)) % 5 or 5
     start_time = now.replace(second=0, microsecond=0) + timedelta(minutes=minute_offset)
 
     predictions = []
-    for i in range(duration * 12):  # tiap 5 menit
-        # Temperature
-        input_temp = np.array(X_temp[-12:]).reshape(-1, 1)
-        input_temp_scaled = temp_scaler.transform(input_temp).reshape(1, input_temp.shape[0], 1)
-        next_temp = temp_scaler.inverse_transform(temp_model.predict(input_temp_scaled, verbose=0))[0][0]
+    window = 12
 
-        # Humidity
-        input_hum = np.array(X_hum[-12:]).reshape(-1, 1)
-        input_hum_scaled = hum_scaler.transform(input_hum).reshape(1, input_hum.shape[0], 1)
-        next_hum = hum_scaler.inverse_transform(hum_model.predict(input_hum_scaled, verbose=0))[0][0]
+    for i in range(duration * 12):
+        # Use numpy slicing for last 12 values
+        input_temp = X_temp[-window:].reshape(-1, 1)
+        input_temp_scaled = temp_scaler.transform(input_temp).reshape(1, window, 1)
+        next_temp = temp_model.predict(input_temp_scaled, verbose=0)
+        next_temp = temp_scaler.inverse_transform(next_temp)[0][0]
+
+        input_hum = X_hum[-window:].reshape(-1, 1)
+        input_hum_scaled = hum_scaler.transform(input_hum).reshape(1, window, 1)
+        next_hum = hum_model.predict(input_hum_scaled, verbose=0)
+        next_hum = hum_scaler.inverse_transform(next_hum)[0][0]
 
         pred_time = start_time + timedelta(minutes=5 * i)
         predictions.append({
@@ -57,8 +57,9 @@ def make_prediction(seq_data, models_dict, lokasi: str, room: int, duration: int
             "humidity": round(float(next_hum), 2)
         })
 
-        X_temp.append(next_temp)
-        X_hum.append(next_hum)
+        # Efficient append
+        X_temp = np.append(X_temp, next_temp)
+        X_hum = np.append(X_hum, next_hum)
 
     return {"room": room, "predictions": predictions}
 

@@ -24,7 +24,6 @@ ROOM_MAP = {
 }
 
 def get_sensor_data(location: str, room: int, duration_hours: int):
-
     table = TABLE_MAP.get(location)
     if not table:
         raise ValueError("Unknown location")
@@ -39,13 +38,19 @@ def get_sensor_data(location: str, room: int, duration_hours: int):
     # total data per sensor = duration_hours * 12 (karena 12 data per jam)
     limit = duration_hours * 12
 
+    # Optimized: Ambil N terakhir per sensor langsung di SQL
     sql = f"""
-        SELECT sensor_id, time_id, temperature, humidity
-        FROM {table}
-        WHERE room_id = %s
-        ORDER BY time_id DESC
+        SELECT t.sensor_id, t.time_id, t.temperature, t.humidity
+        FROM (
+            SELECT *,
+                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY time_id DESC) AS rn
+            FROM {table}
+            WHERE room_id = %s
+        ) t
+        WHERE t.rn <= %s
+        ORDER BY t.sensor_id, t.time_id DESC
     """
-    cursor.execute(sql, (room_name,))
+    cursor.execute(sql, (room_name, limit))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
